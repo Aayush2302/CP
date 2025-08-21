@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CPU Scheduling Simulator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      background: linear-gradient(to right, #141e30, #243b55);
+    }
+    .glass {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 1rem;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    .card-3d {
+      transform: perspective(1000px) rotateY(2deg) rotateX(1deg);
+    }
+    .loading {
+      display: none;
+    }
+    .loading.show {
+      display: block;
+    }
+  </style>
+</head>
+<body class="text-white font-mono min-h-screen p-6">
+
+  <div class="max-w-6xl mx-auto">
+    <h1 class="text-4xl font-bold text-center mb-8">🧠 CPU Scheduling Simulator</h1>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      
+      <!-- Input Section -->
+      <div class="glass card-3d p-8">
+        <h2 class="text-2xl font-bold mb-6">Process Input</h2>
+
+        <form id="processForm" class="space-y-4 mb-6">
+          <div class="grid grid-cols-3 gap-4">
+            <div>
+              <label class="block text-sm">PID</label>
+              <input type="number" id="pid" class="w-full p-2 rounded bg-white/10 text-white border border-white/20" required>
+            </div>
+            <div>
+              <label class="block text-sm">Arrival Time</label>
+              <input type="number" id="arrivalTime" min="0" class="w-full p-2 rounded bg-white/10 text-white border border-white/20" required>
+            </div>
+            <div>
+              <label class="block text-sm">Burst Time</label>
+              <input type="number" id="burstTime" min="1" class="w-full p-2 rounded bg-white/10 text-white border border-white/20" required>
+            </div>
+          </div>
+
+          <button type="submit" class="w-full bg-green-500 hover:bg-green-600 transition-all py-2 rounded shadow-lg">
+            ➕ Add Process
+          </button>
+        </form>
+
+        <!-- Process List -->
+        <div class="mb-6">
+          <h3 class="text-lg font-semibold mb-3">Added Processes:</h3>
+          <div id="processList" class="space-y-2 max-h-40 overflow-y-auto">
+            <p class="text-gray-300 text-sm">No processes added yet</p>
+          </div>
+        </div>
+
+        <!-- Algorithm Selection & Run -->
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm mb-2">Scheduling Algorithm</label>
+            <select id="algorithm" class="w-full p-2 rounded bg-white/10 text-white border border-white/20">
+              <option value="FCFS">First Come First Serve (FCFS)</option>
+              <option value="SJF_np">Shortest Job First (Non-Preemptive)</option>
+              <option value="SJF_p">Shortest Job First (Preemptive)</option>
+            </select>
+          </div>
+
+          <div class="flex gap-2">
+            <button id="runSimulation" class="flex-1 bg-indigo-500 hover:bg-indigo-600 transition-all py-2 rounded shadow-lg disabled:opacity-50" disabled>
+              🚀 Run Simulation
+            </button>
+            <button id="clearAll" class="bg-red-500 hover:bg-red-600 transition-all py-2 px-4 rounded shadow-lg">
+              🗑️ Clear All
+            </button>
+          </div>
+        </div>
+
+        <!-- Loading indicator -->
+        <div id="loading" class="loading text-center mt-4">
+          <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+          <p class="mt-2">Processing...</p>
+        </div>
+      </div>
+
+      <!-- Results Section -->
+      <div class="glass card-3d p-8">
+        <h2 class="text-2xl font-bold mb-6">Results</h2>
+        
+        <div id="results" class="hidden">
+          <!-- Process Table -->
+          <div class="mb-6">
+            <h3 class="text-lg font-semibold mb-3">Process Details:</h3>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="border-b border-white/20">
+                    <th class="text-left p-2">PID</th>
+                    <th class="text-left p-2">AT</th>
+                    <th class="text-left p-2">BT</th>
+                    <th class="text-left p-2">CT</th>
+                    <th class="text-left p-2">TAT</th>
+                    <th class="text-left p-2">WT</th>
+                  </tr>
+                </thead>
+                <tbody id="resultsTable">
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Statistics -->
+          <div id="statistics" class="mb-6">
+            <h3 class="text-lg font-semibold mb-3">Statistics:</h3>
+            <div class="grid grid-cols-2 gap-4 text-sm">
+              <div class="bg-white/5 p-3 rounded">
+                <p>Avg Waiting Time: <span id="avgWT" class="font-bold">-</span></p>
+              </div>
+              <div class="bg-white/5 p-3 rounded">
+                <p>Avg Turnaround Time: <span id="avgTAT" class="font-bold">-</span></p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Gantt Chart -->
+          <div>
+            <h3 class="text-lg font-semibold mb-3">Gantt Chart:</h3>
+            <div class="bg-white/5 p-4 rounded">
+              <canvas id="ganttChart" width="400" height="200"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div id="noResults" class="text-center text-gray-300">
+          <p>Run a simulation to see results</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let processes = [];
+    let chart = null;
+
+    // Add process to list
+    document.getElementById('processForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      
+      const pid = parseInt(document.getElementById('pid').value);
+      const arrivalTime = parseInt(document.getElementById('arrivalTime').value);
+      const burstTime = parseInt(document.getElementById('burstTime').value);
+
+      // Check if PID already exists
+      if (processes.find(p => p.pid === pid)) {
+        alert('Process ID already exists!');
+        return;
+      }
+
+      processes.push({ pid, arrivalTime, burstTime });
+      updateProcessList();
+      
+      // Clear form
+      document.getElementById('processForm').reset();
+      
+      // Enable run button if processes exist
+      document.getElementById('runSimulation').disabled = processes.length === 0;
+    });
+
+    // Update process list display
+    function updateProcessList() {
+      const listElement = document.getElementById('processList');
+      
+      if (processes.length === 0) {
+        listElement.innerHTML = '<p class="text-gray-300 text-sm">No processes added yet</p>';
+        return;
+      }
+
+      listElement.innerHTML = processes.map(p => `
+        <div class="bg-white/5 p-2 rounded flex justify-between items-center">
+          <span>P${p.pid}: AT=${p.arrivalTime}, BT=${p.burstTime}</span>
+          <button onclick="removeProcess(${p.pid})" class="text-red-400 hover:text-red-300 text-sm">✕</button>
+        </div>
+      `).join('');
+    }
+
+    // Remove process
+    function removeProcess(pid) {
+      processes = processes.filter(p => p.pid !== pid);
+      updateProcessList();
+      document.getElementById('runSimulation').disabled = processes.length === 0;
+    }
+
+    // Clear all processes
+    document.getElementById('clearAll').addEventListener('click', () => {
+      processes = [];
+      updateProcessList();
+      document.getElementById('runSimulation').disabled = true;
+      document.getElementById('results').classList.add('hidden');
+      document.getElementById('noResults').style.display = 'block';
+    });
+
+    // Run simulation
+    document.getElementById('runSimulation').addEventListener('click', async () => {
+      if (processes.length === 0) {
+        alert('Please add at least one process!');
+        return;
+      }
+
+      const algorithm = document.getElementById('algorithm').value;
+      const loadingElement = document.getElementById('loading');
+      
+      try {
+        loadingElement.classList.add('show');
+        
+        const response = await fetch('http://localhost:3000/simulate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            processes: processes,
+            algorithm: algorithm
+          })
+        });
+
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.error || 'Server error');
+        }
+
+        displayResults(data.results, algorithm);
+        
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error: ' + error.message);
+      } finally {
+        loadingElement.classList.remove('show');
+      }
+    });
+
+    // Display results
+    function displayResults(results, algorithm) {
+      document.getElementById('results').classList.remove('hidden');
+      document.getElementById('noResults').style.display = 'none';
+
+      // Update table
+      const tableBody = document.getElementById('resultsTable');
+      tableBody.innerHTML = results.map(p => `
+        <tr class="border-b border-white/10">
+          <td class="p-2">P${p.pid}</td>
+          <td class="p-2">${p.arrivalTime}</td>
+          <td class="p-2">${p.burstTime}</td>
+          <td class="p-2">${p.completionTime}</td>
+          <td class="p-2">${p.turnAroundTime}</td>
+          <td class="p-2">${p.waitingTime}</td>
+        </tr>
+      `).join('');
+
+      // Calculate averages
+      const avgWT = (results.reduce((sum, p) => sum + p.waitingTime, 0) / results.length).toFixed(2);
+      const avgTAT = (results.reduce((sum, p) => sum + p.turnAroundTime, 0) / results.length).toFixed(2);
+      
+      document.getElementById('avgWT').textContent = avgWT;
+      document.getElementById('avgTAT').textContent = avgTAT;
+
+      // Create Gantt chart
+      createGanttChart(results, algorithm);
+    }
+
+    // Create Gantt chart
+    function createGanttChart(results, algorithm) {
+      const ctx = document.getElementById('ganttChart').getContext('2d');
+      
+      if (chart) {
+        chart.destroy();
+      }
+
+      const labels = results.map(p => `P${p.pid}`);
+      const data = results.map(p => p.completionTime);
+
+      chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Completion Time',
+            data: data,
+            backgroundColor: 'rgba(99, 102, 241, 0.6)',
+            borderColor: 'rgba(99, 102, 241, 1)',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: {
+              display: true,
+              text: `${algorithm} Scheduling Results`,
+              color: 'white'
+            },
+            legend: {
+              labels: {
+                color: 'white'
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                color: 'white'
+              },
+              grid: {
+                color: 'rgba(255, 255, 255, 0.1)'
+              }
+            },
+            x: {
+              ticks: {
+                color: 'white'
+              },
+              grid: {
+                color: 'rgba(255, 255, 255, 0.1)'
+              }
+            }
+          }
+        }
+      });
+    }
+  </script>
+
+</body>
+</html>
