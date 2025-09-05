@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Backtracking Tree</title>
+  <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+  <style>
+    #tree {
+      width: 100%;
+      height: 600px;
+      border: 1px solid lightgray;
+    }
+  </style>
+</head>
+<body>
+  <h2>Backtracking Tree Visualization</h2>
+  <div id="tree"></div>
+
+  <script>
+    // Load JSON dynamically
+    fetch("ree.json")
+      .then(res => res.json())
+      .then(tree => {
+        const nodes = [];
+        const edges = [];
+
+        // DFS traversal to flatten into vis.js format
+        function traverse(node, parentId = null) {
+          nodes.push({ id: node.id, label: node.label });
+
+          if (parentId !== null) {
+            edges.push({ from: parentId, to: node.id });
+          }
+
+          if (node.children) {
+            for (let child of node.children) {
+              traverse(child, node.id);
+            }
+          }
+        }
+
+        traverse(tree);
+
+        const container = document.getElementById("tree");
+        const data = {
+          nodes: new vis.DataSet(nodes),
+          edges: new vis.DataSet(edges),
+        };
+
+        const options = {
+          layout: {
+            hierarchical: {
+              direction: "UD",
+              sortMethod: "directed",
+            },
+          },
+          physics: false,
+        };
+
+        new vis.Network(container, data, options);
+      });
+  </script>
+</body>
+</html>
